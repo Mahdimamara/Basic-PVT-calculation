@@ -1,0 +1,37 @@
+% CCE Experiment
+clc;clear;
+disp('CVD Test')
+disp('Results from Pd calculation:')
+fluidtype=1;
+EOS=1;
+TTd = 580; %K
+[PPd,Vsat,Zy]=Pdcalc(TTd);
+Vini=1;
+nini=PPd/(8.314*580*Zy);
+disp(['dew point pressure: ',num2str(PPd)])
+P=[3538 3300 3000 2800 2600 2400 2200 2000 1800 1600 1400 1200 1000 800 600 400].*101325./14.7;   
+XX=[3538 3300 3000 2800 2600 2400 2200 2000 1800 1600 1400 1200 1000 800 600 400];
+comp = [0.0312, 0.0323, 0.6976, 0.0903, 0.0402, 0.0081, 0.0144, 0.006, 0.0055, 0.0096, 0.011, 0.0127, 0.0086, 0.0061, 0.0029, 0.00, 0.00, 0.00, 0.000, 0.000, 0.0234];
+for i=1:16
+    PP=P(i);   
+    TT=580;    %K
+    [x,y,Fv,K,Zx,Zy,Vv,Vl] = flash(PP,TT,comp);
+    nlact=nini*(1-Fv);
+    nvact=nini*Fv;
+    Vl=nlact*Zx*8.314*TT/XX(i);
+    Vg=nvact*Zx*8.314*TT/XX(i);
+    Sl=Vl*100;
+    Vt=Vl+Vg;
+    Vgp=Vt-1;
+    np=XX(i)*Vgp/(Zy*8.314*TT);
+    Zy;
+    Ztwophase=Fv*Zy+(1-Fv)*Zx;
+    Zini=(x.*nlact+y.*nvact)./nini;
+    comp=Zini';
+    ZZy(i)=Zy;
+    Ztwo(i)=Ztwophase;
+    SSl(i)=Sl;
+end
+disp('       Pressure        Z gas      Z two Phase     Hydrocarbon percentage');
+disp([XX',ZZy',Ztwo',SSl']);
+

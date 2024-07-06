@@ -1,0 +1,57 @@
+function [x,y,nv,k,z] = flash(PP,TT)
+clc;clear all;
+% EOS=input('choose the EOS function:\n SRK(1),SRK&G(2),PR76(3),PR78(4)\n');
+% fluidtype=input('choose the fluid type:\n Condensate(1), Black oil(2),Volatile oil(3)\n');
+%%
+EOS=1;
+fluidytpe=1;
+[P, T, Tc, Pc, W, Mw, comp, K_ij, Nc, Mw_t, R,Parachor] = Fluid(fluidtype);
+[m,C,sigma1,sigma2,omegaa,omegab] = EQchar(W,EOS,Mw,Nc);
+%%
+[K,u] = stability(P,T,comp,Tc,Pc,W,R,omegaa,omegab,sigma1,sigma2,K_ij,m,C,Nc,fluidtype,EOS);
+if sum(u)<1
+    disp('the phase is stable')
+    break
+end
+%%
+Tol=1;
+[b,a,ac,alpha] = coglob(R,Tc,Pc,m,T,omegaa,omegab);
+if fluidtype==1
+    Fv=1;
+else
+    Fv=0.5;
+end
+count=0;
+%%
+while Tol>10^-13
+    F=1;
+    while F>10^-14
+        F=sum((K-1).*comp./(1+Fv.*(K-1)));
+        F_prime=sum((-(K-1).^2).*comp./(1+Fv.*(K-1)).^2);
+        Fv=Fv-F./F_prime;
+    end
+    x=comp./(1+Fv.*(K-1));
+    y=K.*x;
+    [Sx,atx,btx,Ax,Bx] = coefficientcal(x,P,T,Pc,Tc,m,R,omegaa,omegab,Nc,K_ij,b,ac,a,alpha);
+    [Zx] = solvecub(Ax,Bx,C,b,btx,Sx,atx,sigma1,sigma2,x,R,T);
+    [Phix] = FugacityCal(Zx,Ax,Bx,sigma1,sigma2,b,btx,Sx,atx);
+    [Sy,aty,bty,Ay,By] = coefficientcal(y,P,T,Pc,Tc,m,R,omegaa,omegab,Nc,K_ij,b,ac,a,alpha);
+    [Zy] = solvecub(Ay,By,C,b,bty,Sy,aty,sigma1,sigma2,y,R,T);
+    [Phiy] = FugacityCal(Zy,Ay,By,sigma1,sigma2,b,bty,Sy,aty);
+    K=Phix./Phiy;
+    fl=Phix.*x*P;
+    fv=Phiy.*y*P;
+    Tol=sum(abs(1-fl./fv));
+    count=count+1;
+end
+%%
+Mwl=sum(x.*Mw);
+Mwv=sum(y.*Mw);
+Mwz=sum(comp.*Mw);
+liquid_density=(P.*Mwl/(Zx.*R*T))*10^-6;
+Vapour_density=(P.*Mwv/(Zy.*R*T))*10^-6;
+Mwa=sum(comp.*Mw);
+surf_tension=(sum(Parachor.*(x.*(liquid_density/Mwl)-y.*(Vapour_density/Mwv))))^4;
+x=x'
+y=y'
+K=K'
